@@ -1,0 +1,8 @@
+# Node modules directory
+node_modules/
+
+# IDE specific files
+.vscode/
+.idea/
+
+.env

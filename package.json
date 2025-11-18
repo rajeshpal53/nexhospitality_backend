@@ -1,0 +1,28 @@
+{
+  "name": "nexhospitality_backend",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "mysql2": "^3.14.2",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.5",
+    "razorpay": "^2.9.6",
+    "scripts": "^0.1.0",
+    "sequelize": "^6.37.7",
+    "sharp": "^0.34.5"
+  }
+}
