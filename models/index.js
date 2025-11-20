@@ -18,40 +18,40 @@ const models = {
 };
 
 // user - bookings
-User.hasMany(Booking, { foreignKey: "userfk" });
-Booking.belongsTo(User, { foreignKey: "userfk" });
+User.hasMany(Booking, { foreignKey: "userfk", as: 'bookings' });
+Booking.belongsTo(User, { foreignKey: "userfk", as: 'user' });
 
 // user - hotels
-User.hasMany(Hotel, { foreignKey: "userfk" });
-Hotel.belongsTo(User, { foreignKey: "userfk" });
+User.hasMany(Hotel, { foreignKey: "userfk", as: 'hotels' });
+Hotel.belongsTo(User, { foreignKey: "userfk", as: 'user' });
 
 // hotel - bookings
-Hotel.hasMany(Booking, { foreignKey: "hotelfk" });
-Booking.belongsTo(Hotel, { foreignKey: "hotelfk" });
+Hotel.hasMany(Booking, { foreignKey: "hotelfk", as: 'bookings' });
+Booking.belongsTo(Hotel, { foreignKey: "hotelfk", as: 'hotel' });
 
 // Hotel - offers
-Hotel.hasMany(Offer, { foreignKey: "hotelfk" });
-Offer.belongsTo(Hotel, { foreignKey: "hotelfk" });
+Hotel.hasMany(Offer, { foreignKey: "hotelfk", as: 'offers' });
+Offer.belongsTo(Hotel, { foreignKey: "hotelfk", as: 'hotel' });
 
 // hotel - customers
-Hotel.hasMany(Customer, { foreignKey: "hotelfk" });
-Customer.belongsTo(Hotel, { foreignKey: "hotelfk" });
+Hotel.hasMany(Customer, { foreignKey: "hotelfk", as: 'customers' });
+Customer.belongsTo(Hotel, { foreignKey: "hotelfk", as: 'hotel' });
 
 // Status - bookings
-Status.hasMany(Booking, { foreignKey: "statusfk" });
-Booking.belongsTo(Status, { foreignKey: "statusfk" });
+Status.hasMany(Booking, { foreignKey: "statusfk", as: 'bookings' });
+Booking.belongsTo(Status, { foreignKey: "statusfk", as: 'status' });
 
 // Transactions - booking
-Transaction.belongsTo(Booking, { foreignKey: "bookingfk" });
-Booking.hasMany(Transaction, { foreignKey: "bookingfk" });
+Transaction.belongsTo(Booking, { foreignKey: "bookingfk", as: 'booking' });
+Booking.hasMany(Transaction, { foreignKey: "bookingfk", as: "transactions" });
 
 // Transactions - hotel
-Transaction.belongsTo(Hotel, { foreignKey: "hotelfk" });
-Hotel.hasMany(Transaction, { foreignKey: "hotelfk" });
+Transaction.belongsTo(Hotel, { foreignKey: "hotelfk", as: 'hotel' });
+Hotel.hasMany(Transaction, { foreignKey: "hotelfk", as: 'transactions' });
 
 // Transactions - user
-Transaction.belongsTo(User, { foreignKey: "userfk" });
-User.hasMany(Transaction, { foreignKey: "userfk" });
+Transaction.belongsTo(User, { foreignKey: "userfk", as: 'user' });
+User.hasMany(Transaction, { foreignKey: "userfk", as: 'transactions' });
 
 
 sequelize.sync()

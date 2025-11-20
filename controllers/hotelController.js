@@ -7,8 +7,8 @@ exports.createHotel = async (req, res) => {
     const { userfk, hotelName, address, latitude, longitude } = req.body;
 
     let hotelImages = [];
-    if (req.files && req.files.hotelImages) {
-      hotelImages = req.files.hotelImages.map(img => img.filename);
+    if (req.savedFiles && req.savedFiles.hotelImages) { 
+      hotelImages = req.savedFiles.hotelImages; // Use paths saved by multer+sharp 
     }
 
     const hotel = await Hotel.create({
@@ -35,8 +35,9 @@ exports.getAllHotels = async (req, res) => {
       ]
     });
 
-    res.status(200).json(hotels);
+    return res.status(200).json(hotels);
   } catch (error) {
+    console.log("error is:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -51,8 +52,9 @@ exports.getHotelById = async (req, res) => {
 
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
 
-    res.status(200).json(hotel);
+    return res.status(200).json(hotel);
   } catch (error) {
+    console.log("error is:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -73,9 +75,10 @@ exports.updateHotel = async (req, res) => {
       hotelImages,
     });
 
-    res.status(200).json({ message: "Hotel updated", hotel });
+    return res.status(200).json({ message: "Hotel updated", hotel });
 
   } catch (error) {
+    console.log("error is:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -86,9 +89,10 @@ exports.deleteHotel = async (req, res) => {
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
 
     await hotel.destroy();
-    res.status(200).json({ message: "Hotel deleted" });
+    return res.status(200).json({ message: "Hotel deleted" });
 
   } catch (error) {
+    console.log("error is:", error);
     res.status(500).json({ error: error.message });
   }
 };
