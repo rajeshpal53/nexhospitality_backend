@@ -59,13 +59,13 @@ const User = sequelize.define('User', {
   }
   },
 
-  password: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    validate: {
-    len: [6, 100]
-  }
-  },
+  // password: {
+  //   type: DataTypes.STRING,
+  //   allowNull: false,
+  //   validate: {
+  //   len: [6, 100]
+  // }
+  // },
 
   token_validity: {
     type: DataTypes.DATE, 
@@ -93,11 +93,6 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: true,
   },
-
-  fcmtokens: {
-    type: DataTypes.JSON,
-  },
-
 });
 
 module.exports = User;

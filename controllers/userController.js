@@ -144,41 +144,28 @@ exports.signUp = async (req, res) => {
 // Upsert user by mobile number
 exports.upsertUser = async (req, res) => {
   
-  const { mobile, device, idToken, fcmtokens } = req.body;
+  const { mobile, device, idToken } = req.body;
 
-  if (!idToken) {
-    return res.status(400).json({ error: 'ID token is required.' });
-  }
+  // if (!idToken) {
+  //   return res.status(400).json({ error: 'ID token is required.' });
+  // }
 
-  let newToken = null;
-
-  console.log("mobile", mobile);
-
-  if(fcmtokens && Array.isArray(fcmtokens)){
-		console.log("getted", fcmtokens)
-	  newToken = JSON.parse(fcmtokens);//fcmtokens[0];
-		console.log("new Token Test", newToken )
-	}
 
   try {
-      // Verify the Firebase credential
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      // // Verify the Firebase credential
+      // const decodedToken = await admin.auth().verifyIdToken(idToken);
 
-      // Check if the phone number matches
-      if (!decodedToken.phone_number || decodedToken.phone_number !== "+91"+mobile) {
-        return res.status(401).json({ error: 'Mobile number does not match the token.' });
-      }
+      // // Check if the phone number matches
+      // if (!decodedToken.phone_number || decodedToken.phone_number !== "+91"+mobile) {
+      //   return res.status(401).json({ error: 'Mobile number does not match the token.' });
+      // }
     // Check if the mobile number exists
     let user = await User.findOne({ where: { mobile } });
 
     if (user) {
-      let existingTokens = user.fcmtokens || [];
-      const updatedTokens = [...new Set([...existingTokens, newToken])];
-      console.log("Updated Tokens to Save:", updatedTokens);
         // Mobile number exists, update the user details
         user = await user.update({
           ...req.body,
-          fcmtokens: updatedTokens,
         });
 
        res.status(200)
@@ -186,7 +173,6 @@ exports.upsertUser = async (req, res) => {
       // Mobile number does not exist, create a new user
       user = await User.create({
         ...req.body,
-        fcmtokens: newToken ? [newToken] : null,
       });
       res.status(201)
     }
