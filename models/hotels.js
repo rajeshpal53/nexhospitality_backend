@@ -8,6 +8,20 @@ const Hotel = sequelize.define("Hotel", {
     primaryKey: true,
   },
 
+  whatsappnumber: {
+    type: DataTypes.STRING(10),
+    allowNull: true,
+    validate: {
+      len: [10, 10], // Ensure it's exactly 10 digits
+      isNumeric: true, // Ensure only numeric values
+    },
+  },
+
+  details: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+
   hotelName: {
     type: DataTypes.STRING,
     allowNull: false,

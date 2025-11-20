@@ -12,12 +12,13 @@ app.use(cors());
 
 //routes
 const userRoutes = require('./routes/userRoutes');
+const hotelRoutes = require('./routes/hotelRoutes');
 
 const path = require('path');
 
 // app.use(express.static(path.join(__dirname, 'public')));
 app.use('/napi/users', userRoutes);
-
+app.use('/napi/hotels', hotelRoutes);
 // const sequelize = require('./config/db');
 // sequelize.sync().then(() => { console.log('Database synced')}).catch(err => console.log(err));
 

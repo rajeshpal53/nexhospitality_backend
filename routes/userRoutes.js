@@ -13,7 +13,7 @@
 router.post('/loginUser', userController.loginUser);
 router.post('/logout', userController.logout);
 router.post('/signUp', userController.signUp);
-
+router.post('/upsertUser', userController.upsertUser);
 router.post('/', userController.createUser);
 router.get('/:id', userController.getUserById);
 router.get('/', userController.getAllUsers);

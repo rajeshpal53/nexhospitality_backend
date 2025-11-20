@@ -2,6 +2,7 @@ const { User } = require('../models/');
 const { Op } = require('sequelize'); //Sequelize operators for complex queries
 const jwt = require('jsonwebtoken'); //generating and verifying JWTs
 const bcrypt = require('bcryptjs');  //password hashing
+const admin = require('../config/firebase');
 require('dotenv').config();    //managing secret keys
 
 exports.loginUser = async (req, res) => {
@@ -137,6 +138,52 @@ exports.signUp = async (req, res) => {
   } catch (error) {
     console.error('Signup Error:', error);
     return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+// Upsert user by mobile number
+exports.upsertUser = async (req, res) => {
+  
+  const { mobile, device, idToken } = req.body;
+
+  // if (!idToken) {
+  //   return res.status(400).json({ error: 'ID token is required.' });
+  // }
+
+
+  try {
+      // // Verify the Firebase credential
+      // const decodedToken = await admin.auth().verifyIdToken(idToken);
+
+      // // Check if the phone number matches
+      // if (!decodedToken.phone_number || decodedToken.phone_number !== "+91"+mobile) {
+      //   return res.status(401).json({ error: 'Mobile number does not match the token.' });
+      // }
+    // Check if the mobile number exists
+    let user = await User.findOne({ where: { mobile } });
+
+    if (user) {
+        // Mobile number exists, update the user details
+        user = await user.update({
+          ...req.body,
+        });
+
+       res.status(200)
+    } else {
+      // Mobile number does not exist, create a new user
+      user = await User.create({
+        ...req.body,
+      });
+      res.status(201)
+    }
+    const token = jwt.sign({ id: user.id, mobile: user.mobile }, process.env.JWT_SECRET, { expiresIn: device == "app" ? '180d' : '180d' });
+    if(res && token) {
+      storeToken(res, token);
+    }
+    return res.json({user: user, token: token});
+  } catch (err) {
+    console.log("error is:", err);
+    return res.status(400).json({ error: err.message });
   }
 };
 

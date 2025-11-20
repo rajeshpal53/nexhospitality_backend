@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const hotelController = require('../controllers/hotelController');
-const { upload } = require('../middleware/multer');
+const { upload, compressAndSaveImage } = require('../middleware/multer');
 
-router.post('/', upload.array("hotelImages"), hotelController.createHotel);
+router.post('/', upload.fields([
+    { name: 'hotelImages', maxCount: 5},]), compressAndSaveImage, hotelController.createHotel);
 router.get('/', hotelController.getAllHotels);
 router.get('/search', hotelController.searchHotel);
 router.get('/:id', hotelController.getHotelById);
