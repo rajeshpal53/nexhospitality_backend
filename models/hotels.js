@@ -1,11 +1,21 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
+const User = require("./users");
 
 const Hotel = sequelize.define("Hotel", {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
     primaryKey: true,
+  },
+
+  userfk: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: User,
+      key: "id",
+    },
   },
 
   whatsappnumber: {
@@ -46,6 +56,15 @@ const Hotel = sequelize.define("Hotel", {
     type: DataTypes.JSON,   // Array of images
     allowNull: true,
   },
-});
+},
+{
+  indexes: [
+    {
+      unique: true,
+      fields: ["hotelName", "userfk"],
+    },
+  ],
+}
+);
 
 module.exports = Hotel;

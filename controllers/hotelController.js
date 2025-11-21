@@ -1,6 +1,9 @@
 const Hotel = require('../models/hotels');
 const User = require('../models/users');
 const { Op } = require('sequelize');
+const fs = require('fs');
+const path = require('path');
+const moment = require('moment');
 
 exports.createHotel = async (req, res) => {
   try {
@@ -61,21 +64,59 @@ exports.getHotelById = async (req, res) => {
 
 exports.updateHotel = async (req, res) => {
   try {
+    const { body } = req;
     const hotel = await Hotel.findByPk(req.params.id);
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
 
-    let hotelImages = hotel.hotelImages;
+    const baseUploadPath = process.env.UPLOAD_PATH || path.join(__dirname, '../../frontend/assets');
 
-    if (req.files && req.files.hotelImages) {
-      hotelImages = req.files.hotelImages.map(img => img.filename);
+    // Step 1: Separate existing URLs and new files
+    let existingUrls = [];
+    console.log('img:---', body.hotelImages);
+        
+    if(Array.isArray(body.hotelImages)){
+      for (const item of body.hotelImages) {
+        if (typeof item === "string") {
+          existingUrls.push(item);
+        } 
+      }
+    } else if(typeof body.hotelImages === "string"){
+      existingUrls.push(body.hotelImages);
     }
 
+    console.log("existingUrls:---",existingUrls);
+
+    // Step 2: Upload new files
+    const newUploadedUrls = req.savedFiles?.hotelImages || [];
+
+    // Step 3: Combine final imageUrls
+    const finalImageUrls = [...existingUrls, ...newUploadedUrls];
+    console.log("finalImageUrls:----",finalImageUrls);
+    
+
+    // Step 4: Delete removed images
+    const existingDbImages = Array.isArray(hotel.hotelImages) ? hotel.hotelImages : [];
+
+    const imagesToDelete = existingDbImages.filter(oldUrl => !existingUrls.includes(oldUrl));
+
+    for (const imgPath of imagesToDelete) {
+      const fullPath = path.join(baseUploadPath, imgPath.replace('assets/', ''));
+      try {
+        await fs.promises.access(fullPath);
+        await fs.promises.unlink(fullPath);
+        console.log(`Deleted old image: ${fullPath}`);
+      } catch (err) {
+        console.error(`Failed to delete image: ${fullPath}`, err.message);
+      }
+    }
+
+    // Step 5: Save final image array in DB
     await hotel.update({
-      ...req.body,
-      hotelImages,
+      ...body,
+      hotelImages: finalImageUrls
     });
 
-    return res.status(200).json({ message: "Hotel updated", hotel });
+    return res.status(200).json({ message: 'hotel updated successfully', hotel });
 
   } catch (error) {
     console.log("error is:", error);
@@ -97,16 +138,37 @@ exports.deleteHotel = async (req, res) => {
   }
 };
 
-exports.searchHotel = async (req, res) => {
+exports.getHotel = async (req, res) => {
   try {
-    const { searchTerm } = req.query;
+    const { searchTerm, id, userfk } = req.query;
 
     let whereClause = {};
 
+    if(userfk){
+      whereClause.userfk = userfk;
+    }
+
+    if(id){
+      whereClause.id = id
+    }
+
+    let dateSearch = null;
+    if (moment(searchTerm, "YYYY-MM-DD", true).isValid()) {
+      dateSearch = moment(searchTerm, "YYYY-MM-DD").startOf("day").toDate();
+    }
+
     if (searchTerm && searchTerm.trim() !== ""){
       whereClause[Op.or]= [
-        { "$hotel.hotelName$": { [Op.like]: `%${searchTerm}%` } },
-        { "$hotel.address$": { [Op.like]: `%${searchTerm}%` } },
+        { hotelName: { [Op.like]: `%${searchTerm}%` } },
+        { address: { [Op.like]: `%${searchTerm}%` } },
+        { whatsappnumber: { [Op.like]: `%${searchTerm}%` } },
+        { "$user.address$": { [Op.like]: `%${searchTerm}%` } },
+        { "$user.mobile$": { [Op.like]: `%${searchTerm}%` } },
+        { "$user.name$": { [Op.like]: `%${searchTerm}%` } },
+        { "$user.email$": { [Op.like]: `%${searchTerm}%` } },
+        ...(dateSearch
+            ? [{ createdAt: { [Op.between]: [dateSearch, moment(dateSearch).endOf("day").toDate()] } }]
+            : []),
       ];
     }
     // Fetch orders filtered by search term
