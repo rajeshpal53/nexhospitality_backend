@@ -57,7 +57,7 @@ const upload = multer({
 // Middleware to compress and save images
 const compressAndSaveImage = async (req, res, next) => {
     try {
-      const baseUploadPath = process.env.UPLOAD_PATH || path.resolve(__dirname, '../../frontend/assets');
+      const baseUploadPath = process.env.UPLOAD_PATH || path.resolve(__dirname, '../public/assets');
   
       // Handle single or multiple files
       const files = req.files ? Object.values(req.files).flat() : req.file ? [req.file] : [];
