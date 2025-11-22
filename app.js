@@ -2,7 +2,6 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors')
 require('dotenv').config();
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -11,12 +10,14 @@ app.use(bodyParser.json());
 app.use(cors());
 
 //routes
+// const __dirname = path.resolve();
+
 const userRoutes = require('./routes/userRoutes');
 const hotelRoutes = require('./routes/hotelRoutes');
 
 const path = require('path');
 
-// app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use('/napi/users', userRoutes);
 app.use('/napi/hotels', hotelRoutes);
 // const sequelize = require('./config/db');
