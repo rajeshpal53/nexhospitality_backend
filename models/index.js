@@ -6,6 +6,7 @@ const Booking = require("./bookings");
 const Status = require("./status");
 const Transaction = require("./transactions");
 const Customer = require("./customers");
+const Rooms = require("./rooms");
 
 const models = {
   User,
@@ -15,6 +16,7 @@ const models = {
   Status,
   Transaction,
   Customer,
+  Rooms
 };
 
 User.hasMany(Booking, { foreignKey: "userfk", as: 'bookings' });
@@ -31,6 +33,9 @@ Hotel.hasMany(Booking, { foreignKey: "hotelfk", as: 'bookings' });
 Hotel.hasMany(Offer, { foreignKey: "hotelfk", as: 'offers' });
 Hotel.hasMany(Customer, { foreignKey: "hotelfk", as: 'customers' });
 Hotel.hasMany(Transaction, { foreignKey: "hotelfk", as: 'transactions' });
+Hotel.hasMany(Rooms, {foreignKey: "hotelfk", as: 'rooms'});
+
+Rooms.belongsTo(Hotel, { foreignKey: "hotelfk", as: 'hotel'});
 
 Offer.belongsTo(Hotel, { foreignKey: "hotelfk", as: 'hotel' });
 

@@ -1,5 +1,6 @@
 const Hotel = require('../models/hotels');
 const User = require('../models/users');
+const Rooms = require('../models/rooms');
 const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
@@ -9,10 +10,7 @@ exports.createHotel = async (req, res) => {
   try {
     const { userfk, hotelName, address, latitude, longitude } = req.body;
 
-    let hotelImages = [];
-    if (req.savedFiles && req.savedFiles.hotelImages) { 
-      hotelImages = req.savedFiles.hotelImages; // Use paths saved by multer+sharp 
-    }
+    const { savedFiles = {} } = req;
 
     const hotel = await Hotel.create({
       userfk,
@@ -20,7 +18,9 @@ exports.createHotel = async (req, res) => {
       address,
       latitude,
       longitude,
-      hotelImages
+      hotelImages: savedFiles.hotelImages || [],
+      coverImages: savedFiles.coverImages || [],
+      spotsImages: savedFiles.spotsImages || []
     });
 
     res.status(201).json({ message: "Hotel created", hotel });
@@ -34,7 +34,8 @@ exports.getAllHotels = async (req, res) => {
   try {
     const hotels = await Hotel.findAll({
       include: [
-        { model: User, as: "user", attributes: ["id", "name", "email"] }
+        { model: User, as: "user", attributes: ["id", "name", "email"] },
+        { model: Rooms, as: "rooms"}
       ]
     });
 
@@ -49,7 +50,8 @@ exports.getHotelById = async (req, res) => {
   try {
     const hotel = await Hotel.findByPk(req.params.id, {
       include: [
-        { model: User, as: "user", attributes: ["id", "name", "email"] }
+        { model: User, as: "user", attributes: ["id", "name", "email"] },
+        { model: Rooms, as: "rooms"}
       ]
     });
 
@@ -181,7 +183,8 @@ exports.getHotel = async (req, res) => {
           model: User,
           as: 'user',
           attributes: ["mobile", "name", "email", "address"]
-        }
+        },
+        { model: Rooms, as: "rooms"}
       ],
     });
 

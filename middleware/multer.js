@@ -67,7 +67,10 @@ const compressAndSaveImage = async (req, res, next) => {
       }
 
       req.savedFiles = {
-        hotelImages: [] // To group variant images
+        hotelImages: [], // To group images
+        coverImages: [],
+        spotsImages: [],
+        roomImages: []
       };
 
       for (const file of files) {
@@ -77,19 +80,14 @@ const compressAndSaveImage = async (req, res, next) => {
         const timestamp = Date.now();
         const random = Math.floor(Math.random() * 1000);
         const originalExt = path.extname(file.originalname).toLowerCase();
-    
-        // // Handle variantImages[Blue-M] pattern
-        // const variantMatch = fieldName.match(/^variantImages\[(.+)\]$/); // Extract "Blue-M" from field name
-        // let variantIdentifier;
 
         // Determine the upload path based on the file fieldname
-        if (fieldName === 'hotelImages') {
+        if (fieldName === 'hotelImages' || fieldName === 'coverImages' || fieldName === 'spotsImages') {
           const hotelName = req?.body?.hotelName?.replace(/\s+/g, '_') || 'shopname';
           const whatsappnumber = req?.body?.whatsappnumber || 'whatsappnumber';
           const hotelFolder = `${hotelName}-${whatsappnumber}`;
           specificPath = path.join(baseUploadPath, 'hotels', hotelFolder);
         } else if (fieldName === 'aadharCardFronturl' || fieldName === 'aadharCardBackurl') {
-          // const usersfk = req.body.usersfk;
           const userName = req?.body?.name?.replace(/\s+/g, '_') || 'name';
           const aadharCard = req?.body?.aadharCard || 'unknownAadhar';
           const userFolder = `${userName}-${aadharCard}`;
@@ -102,6 +100,10 @@ const compressAndSaveImage = async (req, res, next) => {
           specificPath = path.join(baseUploadPath, 'screenshots');
         } else if (fieldName === 'subcategoryImage') {
           specificPath = path.join(baseUploadPath, 'subcategory');
+        } else if(fieldName === 'roomImages') {
+          const hotel = await getHotel(req?.body?.hotelfk);
+          const roomFolder = `${hotel?.hotelName.replace(/\s+/g, '_')}-${hotel?.whatsappnumber}`;
+          specificPath = path.join(baseUploadPath, 'rooms', roomFolder);
         }
         else {
           return next(new Error('Invalid file field'));
@@ -116,6 +118,16 @@ const compressAndSaveImage = async (req, res, next) => {
         if (fieldName === 'hotelImages') {
           prefix = 'hotel';
           uniqueIdentifier = `${prefix}-${(req?.body?.hotelName || 'hotelName')?.replace(/\s+/g, '_')}-${timestamp}-${random}`;
+        } else if (fieldName === 'coverImages') {
+          prefix = 'hotel_cover';
+          uniqueIdentifier = `${prefix}-${(req?.body?.hotelName || 'hotelName')?.replace(/\s+/g, '_')}-${timestamp}-${random}`;
+        } else if (fieldName === 'spotsImages') {
+          prefix = 'hotel_spots';
+          uniqueIdentifier = `${prefix}-${(req?.body?.hotelName || 'hotelName')?.replace(/\s+/g, '_')}-${timestamp}-${random}`;
+        } else if (fieldName === 'roomImages') {
+          prefix = 'room';
+          const hotel = await getHotel(req?.body?.hotelfk);
+          uniqueIdentifier = `${prefix}-${(hotel?.hotelName)?.replace(/\s+/g, '_')}-${timestamp}-${random}`;
         } else if (fieldName === 'aadharCardFronturl') {
           prefix = 'aadharfront';
           uniqueIdentifier = `${prefix}-${(req?.body?.name || 'name')?.replace(/\s+/g, '_')}-${req?.body?.aadharCard || 'unknownAadhar'}`;
@@ -132,11 +144,9 @@ const compressAndSaveImage = async (req, res, next) => {
           uniqueIdentifier = `${(req?.body?.name || 'name')?.replace(/\s+/g, '_')}-${Date.now()}`;
         } else if (fieldName === 'subcategoryImage') {
           uniqueIdentifier = `${(req?.body?.name || 'name')?.replace(/\s+/g, '_')}-${Date.now()}`;
-        }  
-        else if (fieldName === 'productCategoryImage') {
+        } else if (fieldName === 'productCategoryImage') {
           uniqueIdentifier = `${(req?.body?.name || 'name')?.replace(/\s+/g, '_')}-${Date.now()}`;
-        }  
-        else {
+        } else {
           prefix = 'unknown';
           uniqueIdentifier = `${prefix}-${timestamp}-${random}`;
         }
@@ -155,12 +165,14 @@ const compressAndSaveImage = async (req, res, next) => {
           fs.writeFileSync(fullPath, file.buffer);
         }
 
-        if(fieldName === 'hotelImages'){
-          req.savedFiles.hotelImages.push(
+        const arrayFields = ['hotelImages', 'coverImages', 'spotsImages', 'roomImages'];
+
+        if(arrayFields.includes(fieldName)){
+          req.savedFiles[fieldName].push(
             fullPath?.replace(baseUploadPath, 'assets').split(path.sep).join('/')
           );
         } else{
-          req.savedFiles[file.fieldname] = fullPath?.replace(baseUploadPath, 'assets').split(path.sep).join('/');
+          req.savedFiles[fieldName] = fullPath?.replace(baseUploadPath, 'assets').split(path.sep).join('/');
         }
       }
   
