@@ -3,6 +3,7 @@ const sequelize = require("../config/db");
 const Hotel = require("./hotels");
 const Status = require("./status");
 const User = require("./users");
+const Rooms = require("./rooms");
 
 const Booking = sequelize.define("Booking", {
   id: {
@@ -15,6 +16,14 @@ const Booking = sequelize.define("Booking", {
     type: DataTypes.INTEGER,
     references: {
       model: Hotel,
+      key: "id",
+    },
+  },
+
+  roomfk: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: Rooms,
       key: "id",
     },
   },
@@ -32,9 +41,24 @@ const Booking = sequelize.define("Booking", {
     allowNull: false,
   },
 
+  advance: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
+
   remaining: {
     type: DataTypes.FLOAT,
     allowNull: true,
+  },
+
+  startDateTime: {
+    type: DataTypes.DATE,
+    allowNull: false
+  },
+  
+  endDateTime: {
+    type: DataTypes.DATE,
+    allowNull: false
   },
 
   statusfk: {

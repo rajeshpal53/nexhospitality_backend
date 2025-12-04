@@ -8,12 +8,16 @@ const moment = require('moment');
 
 exports.createRoom = async (req, res) => {
   try {
-    const { hotelfk } = req.body;
+    const { hotelfk, isAc, isWifi, isTv, type } = req.body;
 
     const { savedFiles = {} } = req;
 
     const room = await Rooms.create({
       hotelfk,
+      isAc,
+      isTv,
+      isWifi,
+      type,
       roomImages: savedFiles.roomImages || []
     });
 

@@ -20,6 +20,22 @@ const Rooms = sequelize.define("Rooms", {
   roomImages: {
     type: DataTypes.JSON,   // Array of images
     allowNull: true,
+  },
+  type:{
+    type: DataTypes.ENUM('Deluxe', 'Suite', 'Standard', 'Premium'), 
+    allowNull: true,
+  },
+  isAc: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false
+  },
+  isWifi: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false
+  },
+  isTv: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false
   }
 });
 
