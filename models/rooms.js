@@ -21,6 +21,10 @@ const Rooms = sequelize.define("Rooms", {
     type: DataTypes.JSON,   // Array of images
     allowNull: true,
   },
+  price: {
+    type: DataTypes.FLOAT,
+    allowNull: false,
+  },
   type:{
     type: DataTypes.ENUM('Deluxe', 'Suite', 'Standard', 'Premium'), 
     allowNull: true,
@@ -46,6 +50,14 @@ const Rooms = sequelize.define("Rooms", {
     type: DataTypes.INTEGER,
     allowNull: false,
     defaultValue: 1
+  },
+  details: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  roomSize: {
+    type: DataTypes.STRING,
+    allowNull: true
   }
 });
 

@@ -8,7 +8,7 @@ const moment = require('moment');
 
 exports.createRoom = async (req, res) => {
   try {
-    const { hotelfk, isAc, isWifi, isTv, type } = req.body;
+    const { hotelfk, isAc, isWifi, isTv, type, details, price, maxAdults, maxChildren } = req.body;
 
     const { savedFiles = {} } = req;
 
@@ -18,6 +18,10 @@ exports.createRoom = async (req, res) => {
       isTv,
       isWifi,
       type,
+      details,
+      maxAdults,
+      maxChildren,
+      price,
       roomImages: savedFiles.roomImages || []
     });
 
@@ -138,7 +142,7 @@ exports.deleteRoom = async (req, res) => {
 
 exports.getRooms = async (req, res) => {
   try {
-    const { searchTerm, id, hotelfk } = req.query;
+    const { searchTerm, id, hotelfk, type } = req.query;
 
     let whereClause = {};
 
@@ -150,9 +154,13 @@ exports.getRooms = async (req, res) => {
       whereClause.id = id
     }
 
+    if(type){
+      whereClause.type = type;
+    }
+    
     let dateSearch = null;
-    if (moment(searchTerm, "YYYY-MM-DD", true).isValid()) {
-      dateSearch = moment(searchTerm, "YYYY-MM-DD").startOf("day").toDate();
+    if (moment(searchTerm, "DD-MM-YYYY", true).isValid()) {
+      dateSearch = moment(searchTerm, "DD-MM-YYYY").startOf("day").toDate();
     }
 
     if (searchTerm && searchTerm.trim() !== ""){
@@ -160,6 +168,8 @@ exports.getRooms = async (req, res) => {
         { "$hotel.hotelName$": { [Op.like]: `%${searchTerm}%` } },
         { "$hotel.address$": { [Op.like]: `%${searchTerm}%` } },
         { "$hotel.details$": { [Op.like]: `%${searchTerm}%` } },
+        { details: { [Op.like]: `%${searchTerm}%` } },
+        { type: { [Op.like]: `%${searchTerm}%` } },
         ...(dateSearch
             ? [{ createdAt: { [Op.between]: [dateSearch, moment(dateSearch).endOf("day").toDate()] } }]
             : []),
