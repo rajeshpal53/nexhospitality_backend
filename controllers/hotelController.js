@@ -142,7 +142,7 @@ exports.deleteHotel = async (req, res) => {
 
 exports.getHotel = async (req, res) => {
   try {
-    const { searchTerm, id, userfk } = req.query;
+    const { searchTerm, id, userfk, address } = req.query;
 
     let whereClause = {};
 
@@ -151,12 +151,16 @@ exports.getHotel = async (req, res) => {
     }
 
     if(id){
-      whereClause.id = id
+      whereClause.id = id;
+    }
+
+    if(address){
+      whereClause.address = address;
     }
 
     let dateSearch = null;
-    if (moment(searchTerm, "YYYY-MM-DD", true).isValid()) {
-      dateSearch = moment(searchTerm, "YYYY-MM-DD").startOf("day").toDate();
+    if (moment(searchTerm, "DD-MM-YYYY", true).isValid()) {
+      dateSearch = moment(searchTerm, "DD-MM-YYYY").startOf("day").toDate();
     }
 
     if (searchTerm && searchTerm.trim() !== ""){
@@ -194,5 +198,27 @@ exports.getHotel = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Error searching hotels", error });
+  }
+};
+
+exports.getAddressOfHotels = async (req, res) => {
+  try {
+    const addresses = await Hotel.findAll({
+      attributes: ["address"],
+      raw: true
+    });
+
+    if (!addresses || addresses.length === 0) {
+      return res.status(404).json({ error: "No addresses found" });
+    }
+
+    // Extract only strings into a single array
+    const addressList = addresses.map(h => h.address);
+
+    return res.status(200).json(addressList);
+
+  } catch (error) {
+    console.error("Error:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };

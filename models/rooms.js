@@ -36,6 +36,16 @@ const Rooms = sequelize.define("Rooms", {
   isTv: {
     type: DataTypes.BOOLEAN,
     allowNull: false
+  },
+  maxAdults: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 2
+  },
+  maxChildren: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 1
   }
 });
 

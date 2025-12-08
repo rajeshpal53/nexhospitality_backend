@@ -2,6 +2,7 @@ const Booking = require('../models/bookings');
 const User = require('../models/users');
 const Hotel = require('../models/hotels');
 const Status = require('../models/status');
+const Rooms = require('../models/rooms');
 const { Op } = require('sequelize');
 const { STATUS_FK_VALUE } = require('../utility/statusConstant');
 const Transaction = require('../models/transactions');
@@ -89,6 +90,59 @@ exports.createBooking = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error("Booking Create Error:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+exports.checkAvailableRooms = async (req, res) => {  
+  try {
+    const { hotelfk, startDateTime, endDateTime, adults, children } = req.body;
+
+    if (!hotelfk || !startDateTime || !endDateTime) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const requestedStart = new Date(startDateTime);
+    const requestedEnd = new Date(endDateTime);
+
+    // STEP 1: Fetch all rooms in hotel with enough capacity
+    const rooms = await Rooms.findAll({
+      where: {
+        hotelfk,
+        maxAdults: { [Op.gte]: adults },
+        maxChildren: { [Op.gte]: children }
+      }
+    });
+
+    let availableRooms = [];
+
+    // STEP 2: For each room, check if it has conflicting bookings
+    for (let room of rooms) {
+      const overlappingBooking = await Booking.findOne({
+        where: {
+          roomfk: room.id,
+          bookingStatus: "inprogress",  // active bookings only
+
+          [Op.and]: [
+            { startDateTime: { [Op.lt]: requestedEnd } },
+            { endDateTime: { [Op.gt]: requestedStart } }
+          ]
+        }
+      });
+
+      if (!overlappingBooking) {
+        availableRooms.push(room);
+      }
+    }
+
+    return res.status(200).json({
+      message: "Available rooms",
+      count: availableRooms.length,
+      rooms: availableRooms,
+    });
+
+  } catch (error) {
+    console.error("Check Rooms Error:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
