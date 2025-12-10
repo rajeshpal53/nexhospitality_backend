@@ -27,12 +27,13 @@ const storage = multer.memoryStorage();
 
 // File filter to only accept image files
 const fileFilter = (req, file, cb) => {
-  const allowedFileTypes = /jpeg|jpg|png|gif|xlsx|xls/;
+  const allowedFileTypes = /webp|jpeg|jpg|png|gif|xlsx|xls/;
   const allowedMimeTypes = [
     'image/jpeg',
     'image/jpg',
     'image/png',
     'image/gif',
+    'image/webp',
     'application/vnd.ms-excel', // For .xls files
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // For .xlsx files
   ];
@@ -57,7 +58,7 @@ const upload = multer({
 // Middleware to compress and save images
 const compressAndSaveImage = async (req, res, next) => {
     try {
-      const baseUploadPath = process.env.UPLOAD_PATH || path.resolve(__dirname, '../../frontend/assets');
+      const baseUploadPath = process.env.UPLOAD_PATH || path.resolve(__dirname, '../public/assets');
   
       // Handle single or multiple files
       const files = req.files ? Object.values(req.files).flat() : req.file ? [req.file] : [];
@@ -169,7 +170,7 @@ const compressAndSaveImage = async (req, res, next) => {
         const fullPath = path.join(specificPath, finalFilename);
   
         // Compress and save the image
-        if (/jpeg|jpg|png|gif/.test(originalExt)) {
+        if (/webp|jpeg|jpg|png|gif/.test(originalExt)) {
           await sharp(file.buffer)
             .resize({ width: 1024 }) // Resize to a max width of 1024px
             .toFormat(originalExt === '.gif' ? 'gif' : originalExt.slice(1), { quality: 80 })

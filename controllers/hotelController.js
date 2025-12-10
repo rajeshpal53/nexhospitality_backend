@@ -5,6 +5,8 @@ const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
+const Spots = require('../models/spots');
+const NearbyPlaces = require('../models/nearbyPlaces');
 
 exports.createHotel = async (req, res) => {
   try {
@@ -34,7 +36,9 @@ exports.getAllHotels = async (req, res) => {
     const hotels = await Hotel.findAll({
       include: [
         { model: User, as: "user", attributes: ["id", "name", "email"] },
-        { model: Rooms, as: "rooms"}
+        { model: Rooms, as: "rooms"},
+        { model: Spots, as: "spots"},
+        { model: NearbyPlaces, as: "nearbyPlaces"}
       ]
     });
 
@@ -50,7 +54,9 @@ exports.getHotelById = async (req, res) => {
     const hotel = await Hotel.findByPk(req.params.id, {
       include: [
         { model: User, as: "user", attributes: ["id", "name", "email"] },
-        { model: Rooms, as: "rooms"}
+        { model: Rooms, as: "rooms"},
+        { model: Spots, as: "spots"},
+        { model: NearbyPlaces, as: "nearbyPlaces"}
       ]
     });
 
@@ -131,7 +137,7 @@ exports.updateHotel = async (req, res) => {
     const hotel = await Hotel.findByPk(req.params.id);
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
 
-    const baseUploadPath = process.env.UPLOAD_PATH || path.join(__dirname, '../../frontend/assets');
+    const baseUploadPath = process.env.UPLOAD_PATH || path.join(__dirname, '../public/assets');
 
     // HELPER FUNCTION TO PROCESS ANY IMAGE FIELD
     const processImages = async (fieldName, dbFieldValue) => {
@@ -256,7 +262,9 @@ exports.getHotel = async (req, res) => {
           as: 'user',
           attributes: ["mobile", "name", "email", "address"]
         },
-        { model: Rooms, as: "rooms"}
+        { model: Rooms, as: "rooms"},
+        { model: Spots, as: "spots"},
+        { model: NearbyPlaces, as: "nearbyPlaces"}
       ],
     });
 
