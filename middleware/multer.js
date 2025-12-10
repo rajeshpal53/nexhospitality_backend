@@ -57,7 +57,7 @@ const upload = multer({
 // Middleware to compress and save images
 const compressAndSaveImage = async (req, res, next) => {
     try {
-      const baseUploadPath = process.env.UPLOAD_PATH || path.resolve(__dirname, '../public/assets');
+      const baseUploadPath = process.env.UPLOAD_PATH || path.resolve(__dirname, '../../frontend/assets');
   
       // Handle single or multiple files
       const files = req.files ? Object.values(req.files).flat() : req.file ? [req.file] : [];
@@ -70,7 +70,8 @@ const compressAndSaveImage = async (req, res, next) => {
         hotelImages: [], // To group images
         coverImages: [],
         spotsImages: [],
-        roomImages: []
+        roomImages: [],
+        nearbyImages: []
       };
 
       for (const file of files) {
@@ -82,11 +83,19 @@ const compressAndSaveImage = async (req, res, next) => {
         const originalExt = path.extname(file.originalname).toLowerCase();
 
         // Determine the upload path based on the file fieldname
-        if (fieldName === 'hotelImages' || fieldName === 'coverImages' || fieldName === 'spotsImages') {
-          const hotelName = req?.body?.hotelName?.replace(/\s+/g, '_') || 'shopname';
+        if (fieldName === 'hotelImages' || fieldName === 'coverImages') {
+          const hotelName = req?.body?.hotelName?.replace(/\s+/g, '_') || 'hotelName';
           const whatsappnumber = req?.body?.whatsappnumber || 'whatsappnumber';
           const hotelFolder = `${hotelName}-${whatsappnumber}`;
           specificPath = path.join(baseUploadPath, 'hotels', hotelFolder);
+        } else if (fieldName === 'nearbyImages' || fieldName === 'spotsImages') {
+          const hotel = await getHotel(req?.body?.hotelfk);
+          const spotFolder = `${hotel?.hotelName.replace(/\s+/g, '_')}-${hotel?.whatsappnumber}`;
+          if(fieldName === 'spotsImages') {
+            specificPath = path.join(baseUploadPath, 'spots', spotFolder);
+          } else if (fieldName === 'nearbyImages') {
+            specificPath = path.join(baseUploadPath, 'nearby_places', spotFolder);
+          }
         } else if (fieldName === 'aadharCardFronturl' || fieldName === 'aadharCardBackurl') {
           const userName = req?.body?.name?.replace(/\s+/g, '_') || 'name';
           const aadharCard = req?.body?.aadharCard || 'unknownAadhar';
@@ -123,7 +132,12 @@ const compressAndSaveImage = async (req, res, next) => {
           uniqueIdentifier = `${prefix}-${(req?.body?.hotelName || 'hotelName')?.replace(/\s+/g, '_')}-${timestamp}-${random}`;
         } else if (fieldName === 'spotsImages') {
           prefix = 'hotel_spots';
-          uniqueIdentifier = `${prefix}-${(req?.body?.hotelName || 'hotelName')?.replace(/\s+/g, '_')}-${timestamp}-${random}`;
+          const hotel = await getHotel(req?.body?.hotelfk);
+          uniqueIdentifier = `${prefix}-${(hotel?.hotelName)?.replace(/\s+/g, '_')}-${timestamp}-${random}`;
+        } else if (fieldName === 'nearbyImages') {
+          prefix = 'hotel_nearby_places';
+          const hotel = await getHotel(req?.body?.hotelfk);
+          uniqueIdentifier = `${prefix}-${(hotel?.hotelName)?.replace(/\s+/g, '_')}-${timestamp}-${random}`;
         } else if (fieldName === 'roomImages') {
           prefix = 'room';
           const hotel = await getHotel(req?.body?.hotelfk);
@@ -165,7 +179,7 @@ const compressAndSaveImage = async (req, res, next) => {
           fs.writeFileSync(fullPath, file.buffer);
         }
 
-        const arrayFields = ['hotelImages', 'coverImages', 'spotsImages', 'roomImages'];
+        const arrayFields = ['hotelImages', 'coverImages', 'spotsImages', 'roomImages', 'nearbyImages'];
 
         if(arrayFields.includes(fieldName)){
           req.savedFiles[fieldName].push(

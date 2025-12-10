@@ -7,6 +7,8 @@ const Status = require("./status");
 const Transaction = require("./transactions");
 const Customer = require("./customers");
 const Rooms = require("./rooms");
+const Spots = require("./spots");
+const NearbyPlaces = require("./nearbyPlaces");
 
 const models = {
   User,
@@ -16,7 +18,9 @@ const models = {
   Status,
   Transaction,
   Customer,
-  Rooms
+  Rooms,
+  Spots,
+  NearbyPlaces
 };
 
 User.hasMany(Booking, { foreignKey: "userfk", as: 'bookings' });
@@ -34,6 +38,8 @@ Hotel.hasMany(Offer, { foreignKey: "hotelfk", as: 'offers' });
 Hotel.hasMany(Customer, { foreignKey: "hotelfk", as: 'customers' });
 Hotel.hasMany(Transaction, { foreignKey: "hotelfk", as: 'transactions' });
 Hotel.hasMany(Rooms, {foreignKey: "hotelfk", as: 'rooms'});
+Hotel.hasMany(Spots, { foreignKey: "hotelfk", as: 'spots'});
+Hotel.hasMany(NearbyPlaces, { foreignKey: "hotelfk", as: 'nearbyPlaces'});
 
 Rooms.belongsTo(Hotel, { foreignKey: "hotelfk", as: 'hotel'});
 
@@ -46,6 +52,10 @@ Status.hasMany(Booking, { foreignKey: "statusfk", as: 'bookings' });
 Transaction.belongsTo(Booking, { foreignKey: "bookingfk", as: 'booking' });
 Transaction.belongsTo(Hotel, { foreignKey: "hotelfk", as: 'hotel' });
 Transaction.belongsTo(User, { foreignKey: "userfk", as: 'user' });
+
+Spots.belongsTo(Hotel, { foreignKey: "hotelfk", as: 'hotel'});
+
+NearbyPlaces.belongsTo(Hotel, { foreignKey: "hotelfk", as: 'hotel'});
 
 sequelize.sync()
   //.sync({ alter: true })

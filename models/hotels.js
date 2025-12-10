@@ -59,11 +59,7 @@ const Hotel = sequelize.define("Hotel", {
   coverImages: {
     type: DataTypes.JSON,   // Array of images
     allowNull: true,
-  },
-  spotsImages: {
-    type: DataTypes.JSON,   // Array of images
-    allowNull: true,
-  },
+  }
 },
 {
   indexes: [
