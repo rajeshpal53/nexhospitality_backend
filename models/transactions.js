@@ -11,14 +11,6 @@ const Transaction = sequelize.define("Transaction", {
     primaryKey: true,
   },
 
-  hotelfk: {
-    type: DataTypes.INTEGER,
-    references: {
-      model: Hotel,
-      key: "id",
-    },
-  },
-
   userfk: {
     type: DataTypes.INTEGER,
     references: {
