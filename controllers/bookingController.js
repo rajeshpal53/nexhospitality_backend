@@ -1,4 +1,5 @@
 const Booking = require('../models/bookings');
+const BookingRooms = require('../models/bookingRooms');
 const User = require('../models/users');
 const Hotel = require('../models/hotels');
 const Status = require('../models/status');
@@ -11,15 +12,55 @@ const sequelize = require("../config/db");
 exports.createBooking = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
-    const { hotelfk, userfk, amount, roomfk, advance, remaining, startDateTime, endDateTime, date, remark, paymentMode } = req.body;
+    const { hotelfk, userfk, amount, rooms, advance, remaining, startDateTime, endDateTime, date, remark, paymentMode } = req.body;
 
-    let statusfk;
-    if(remaining == 0){
-      statusfk = 1;
-    }else if(remaining == amount){
-      statusfk = 2;
-    }else{
-      statusfk = 3;
+    const roomIds = rooms.map((item) => item.id);
+
+    const rooomsTotalPrice = rooms.reduce(
+      (acc, r) => acc + parseFloat(r.price || 0),
+      0
+    );
+
+    const dbRooms = await Rooms.findAll({
+      where: { id: roomIds, hotelfk },
+      transaction,
+    });
+
+    if (dbRooms.length !== rooms.length) {
+      await transaction.rollback();
+      return res.status(400).json({ error: "Some rooms are invalid or do not belong to the hotel."});
+    }
+
+    // Validate room details and calculate the total on the backend
+    let calculatedTotal = 0;
+
+    for (let dbRoom of dbRooms) {
+      const clientRoom = rooms.find(r => r.id === dbRoom.id);
+
+      if (!clientRoom) {
+        await transaction.rollback();
+        return res.status(400).json({
+          error: `Room ID ${dbRoom.id} missing from request.`
+        });
+      }
+
+      if (
+        Number(clientRoom.price) !== Number(dbRoom.price) ||
+        clientRoom.type !== dbRoom.type || clientRoom.price <= 0
+      ) {
+        await transaction.rollback();
+        return res.status(400).json({
+          error: `Invalid details for room ID ${dbRoom.id}.`
+        });
+      }
+
+      calculatedTotal += Number(dbRoom.price);
+    }
+
+    // Validate the total amount
+    if (calculatedTotal !== rooomsTotalPrice) {
+      await transaction.rollback();
+      return res.status(400).json({ error: "Total amount mismatch. Please verify your booking."});
     }
 
     const parsedAdvance = parseFloat(advance);
@@ -41,10 +82,19 @@ exports.createBooking = async (req, res) => {
       return res.status(400).json({ message: "advance cannot be greater than price" });
     }
 
+    let statusfk;
+    if(parsedRemaining == 0){
+      statusfk = 1;
+    }else if(parsedRemaining == parsedAmount){
+      statusfk = 2;
+    }else{
+      statusfk = 3;
+    }
+
     const start = new Date(startDateTime);
     const end = new Date(endDateTime);
 
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    if (!(start instanceof Date) || !(end instanceof Date) || isNaN(start.getTime()) || isNaN(end.getTime())) {
       await transaction.rollback();
       return res.status(400).json({ message: "Invalid slot date format" });
     }
@@ -54,11 +104,10 @@ exports.createBooking = async (req, res) => {
       return res.status(400).json({ message: "Slot start must be before end" });
     }
 
-    const booking = await Booking.create({
+    const booking1 = await Booking.create({
       hotelfk,
       userfk,
       amount,
-      roomfk,
       advance,
       startDateTime,
       endDateTime,
@@ -67,13 +116,21 @@ exports.createBooking = async (req, res) => {
     },
     { transaction });
 
+    await BookingRooms.bulkCreate(
+      rooms.map(r => ({
+        bookingfk: booking1.id,
+        roomfk: r.id
+      })),
+      { transaction }
+    );
+
     let transactionEntry;
     if ((STATUS_FK_VALUE[statusfk] !== 'unpaid') && (amount - remaining !== 0)){
       // Insert Transaction (assuming payment is made)
       transactionEntry = await Transaction.create(
        {
          userfk,
-         bookingfk: booking.id,
+         bookingfk: booking1.id,
          amount: amount - remaining,
          transactionStatus: "credit",
          paymentMode,
@@ -85,6 +142,15 @@ exports.createBooking = async (req, res) => {
     }
 
     await transaction.commit();
+
+    const booking = await Booking.findOne({
+      where: {
+        id: booking1.id
+      },
+      include: [
+        { model: Rooms, as: 'rooms'}
+      ]
+    })
 
     return res.status(201).json({ message: "Booking created", booking, transactionEntry });
   } catch (error) {
