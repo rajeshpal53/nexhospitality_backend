@@ -6,8 +6,8 @@ const { upload, compressAndSaveImage } = require('../middleware/multer');
 router.post('/', upload.fields([
     { name: 'nearbyImages', maxCount: 5}]), compressAndSaveImage, nearbyPlacesController.createNearbyPlaces);
 router.get('/', nearbyPlacesController.getNearbyPlaces);
-router.put('/', upload.fields([
+router.put('/:id', upload.fields([
     { name: 'nearbyImages', maxCount: 5}]), compressAndSaveImage, nearbyPlacesController.updateNearbyPlaces);
-router.delete('/', nearbyPlacesController.deleteNearbyPlace);
+router.delete('/:id', nearbyPlacesController.deleteNearbyPlace);
 
 module.exports = router;
