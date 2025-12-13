@@ -19,14 +19,6 @@ const Booking = sequelize.define("Booking", {
     },
   },
 
-  // roomfk: {
-  //   type: DataTypes.INTEGER,
-  //   references: {
-  //     model: Rooms,
-  //     key: "id",
-  //   },
-  // },
-
   userfk: {
     type: DataTypes.INTEGER,
     references: {
@@ -72,6 +64,16 @@ const Booking = sequelize.define("Booking", {
     type: DataTypes.ENUM("inprogress", "completed", "cancelled"),
     defaultValue: "inprogress",
   },
+
+  adults: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  },
+
+  children: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  }
 });
 
 module.exports = Booking;

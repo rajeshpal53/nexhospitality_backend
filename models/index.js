@@ -63,14 +63,19 @@ NearbyPlaces.belongsTo(Hotel, { foreignKey: "hotelfk", as: 'hotel'});
 Booking.belongsToMany(Rooms, {
   through: BookingRooms,
   foreignKey: "bookingfk",
+  otherKey: "roomfk",
   as: 'rooms'
 });
 
 Rooms.belongsToMany(Booking, {
   through: BookingRooms,
   foreignKey: "roomfk",
+  otherKey: "bookingfk",
   as: 'booking'
 });
+
+BookingRooms.belongsTo(Booking, { foreignKey: "bookingfk", as: 'booking'});
+BookingRooms.belongsTo(Rooms, {foreignKey: "roomfk", as: 'room'});
 
 sequelize.sync()
   //.sync({ alter: true })
