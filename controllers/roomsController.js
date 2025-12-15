@@ -5,10 +5,11 @@ const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
+const {processImages, deleteUploadedImages} = require("../utility/processImages");
 
 exports.createRoom = async (req, res) => {
   try {
-    const { hotelfk, isAc, isWifi, isTv, type, details, price, maxAdults, maxChildren } = req.body;
+    const { hotelfk, isAc, isWifi, isTv, type, details, price, maxAdults, maxChildren, roomNumber } = req.body;
 
     const { savedFiles = {} } = req;
 
@@ -22,6 +23,7 @@ exports.createRoom = async (req, res) => {
       maxAdults,
       maxChildren,
       price,
+      roomNumber,
       roomImages: savedFiles.roomImages || []
     });
 
@@ -70,50 +72,14 @@ exports.updateRoom = async (req, res) => {
     const room = await Rooms.findByPk(req.params.id);
     if (!room) return res.status(404).json({ error: "Room not found" });
 
-    // const baseUploadPath = process.env.UPLOAD_PATH || path.join(__dirname, '../../frontend/assets');
-
-    // // Step 1: Separate existing URLs and new files
-    // let existingUrls = [];
-    // console.log('img:---', body.hotelImages);
-        
-    // if(Array.isArray(body.hotelImages)){
-    //   for (const item of body.hotelImages) {
-    //     if (typeof item === "string") {
-    //       existingUrls.push(item);
-    //     } 
-    //   }
-    // } else if(typeof body.hotelImages === "string"){
-    //   existingUrls.push(body.hotelImages);
-    // }
-
-    // console.log("existingUrls:---",existingUrls);
-
-    // // Step 2: Upload new files
-    // const newUploadedUrls = req.savedFiles?.hotelImages || [];
-
-    // // Step 3: Combine final imageUrls
-    // const finalImageUrls = [...existingUrls, ...newUploadedUrls];
-    // console.log("finalImageUrls:----",finalImageUrls);
-    
-
-    // // Step 4: Delete removed images
-    // const existingDbImages = Array.isArray(hotel.hotelImages) ? hotel.hotelImages : [];
-
-    // const imagesToDelete = existingDbImages.filter(oldUrl => !existingUrls.includes(oldUrl));
-
-    // for (const imgPath of imagesToDelete) {
-    //   const fullPath = path.join(baseUploadPath, imgPath.replace('assets/', ''));
-    //   try {
-    //     await fs.promises.access(fullPath);
-    //     await fs.promises.unlink(fullPath);
-    //     console.log(`Deleted old image: ${fullPath}`);
-    //   } catch (err) {
-    //     console.error(`Failed to delete image: ${fullPath}`, err.message);
-    //   }
-    // }
+    const finalImageUrls = await processImages({
+      fieldName: "roomImages",
+      req,
+      dbFieldValue: room.roomImages,
+    });
 
     // Step 5: Save final image array in DB
-    await Rooms.update({
+    await room.update({
       ...body,
       roomImages: finalImageUrls
     });
@@ -121,6 +87,11 @@ exports.updateRoom = async (req, res) => {
     return res.status(200).json({ message: 'room updated successfully', room });
 
   } catch (error) {
+    if (req.savedFiles && typeof req.savedFiles === "object") {
+      for (const field in req.savedFiles) {
+        await deleteUploadedImages(req.savedFiles[field]);
+      }
+    }
     console.log("error is:", error);
     res.status(500).json({ error: error.message });
   }
@@ -131,6 +102,7 @@ exports.deleteRoom = async (req, res) => {
     const room = await Rooms.findByPk(req.params.id);
     if (!room) return res.status(404).json({ error: "Room not found" });
 
+    await deleteUploadedImages(room.roomImages);
     await room.destroy();
     return res.status(200).json({ message: "Room deleted" });
 

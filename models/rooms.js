@@ -58,6 +58,10 @@ const Rooms = sequelize.define("Rooms", {
   roomSize: {
     type: DataTypes.STRING,
     allowNull: true
+  },
+  roomNumber: {
+    type: DataTypes.STRING,
+    allowNull: true
   }
 });
 

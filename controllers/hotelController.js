@@ -5,10 +5,13 @@ const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
+const Spots = require('../models/spots');
+const NearbyPlaces = require('../models/nearbyPlaces');
+const {processImages, deleteUploadedImages} = require("../utility/processImages");
 
 exports.createHotel = async (req, res) => {
   try {
-    const { userfk, hotelName, address, latitude, longitude } = req.body;
+    const { userfk, whatsappnumber, details, hotelName, address, latitude, longitude } = req.body;
 
     const { savedFiles = {} } = req;
 
@@ -18,6 +21,8 @@ exports.createHotel = async (req, res) => {
       address,
       latitude,
       longitude,
+      whatsappnumber,
+      details,
       hotelImages: savedFiles.hotelImages || [],
       coverImages: savedFiles.coverImages || []
     });
@@ -33,8 +38,10 @@ exports.getAllHotels = async (req, res) => {
   try {
     const hotels = await Hotel.findAll({
       include: [
-        { model: User, as: "user", attributes: ["id", "name", "email"] },
-        { model: Rooms, as: "rooms"}
+        { model: User, as: "user", attributes: ["id", "name", "email", "mobile"] },
+        { model: Rooms, as: "rooms"},
+        { model: Spots, as: "spots"},
+        { model: NearbyPlaces, as: "nearbyPlaces"}
       ]
     });
 
@@ -50,7 +57,9 @@ exports.getHotelById = async (req, res) => {
     const hotel = await Hotel.findByPk(req.params.id, {
       include: [
         { model: User, as: "user", attributes: ["id", "name", "email"] },
-        { model: Rooms, as: "rooms"}
+        { model: Rooms, as: "rooms"},
+        { model: Spots, as: "spots"},
+        { model: NearbyPlaces, as: "nearbyPlaces"}
       ]
     });
 
@@ -63,118 +72,23 @@ exports.getHotelById = async (req, res) => {
   }
 };
 
-// exports.updateHotel = async (req, res) => {
-//   try {
-//     const { body } = req;
-//     const hotel = await Hotel.findByPk(req.params.id);
-//     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
-
-//     const baseUploadPath = process.env.UPLOAD_PATH || path.join(__dirname, '../../frontend/assets');
-
-//     // Step 1: Separate existing URLs and new files
-//     let existingUrls = [];
-//     console.log('img:---', body.hotelImages);
-        
-//     if(Array.isArray(body.hotelImages)){
-//       for (const item of body.hotelImages) {
-//         if (typeof item === "string") {
-//           existingUrls.push(item);
-//         } 
-//       }
-//     } else if(typeof body.hotelImages === "string"){
-//       existingUrls.push(body.hotelImages);
-//     }
-
-//     console.log("existingUrls:---",existingUrls);
-
-//     // Step 2: Upload new files
-//     const newUploadedUrls = req.savedFiles?.hotelImages || [];
-
-//     // Step 3: Combine final imageUrls
-//     const finalImageUrls = [...existingUrls, ...newUploadedUrls];
-//     console.log("finalImageUrls:----",finalImageUrls);
-    
-
-//     // Step 4: Delete removed images
-//     const existingDbImages = Array.isArray(hotel.hotelImages) ? hotel.hotelImages : [];
-
-//     const imagesToDelete = existingDbImages.filter(oldUrl => !existingUrls.includes(oldUrl));
-
-//     for (const imgPath of imagesToDelete) {
-//       const fullPath = path.join(baseUploadPath, imgPath.replace('assets/', ''));
-//       try {
-//         await fs.promises.access(fullPath);
-//         await fs.promises.unlink(fullPath);
-//         console.log(`Deleted old image: ${fullPath}`);
-//       } catch (err) {
-//         console.error(`Failed to delete image: ${fullPath}`, err.message);
-//       }
-//     }
-
-//     // Step 5: Save final image array in DB
-//     await hotel.update({
-//       ...body,
-//       hotelImages: finalImageUrls
-//     });
-
-//     return res.status(200).json({ message: 'hotel updated successfully', hotel });
-
-//   } catch (error) {
-//     console.log("error is:", error);
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
 exports.updateHotel = async (req, res) => {
   try {
     const { body } = req;
     const hotel = await Hotel.findByPk(req.params.id);
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
 
-    const baseUploadPath = process.env.UPLOAD_PATH || path.join(__dirname, '../../frontend/assets');
+    const finalHotelImages = await processImages({
+      fieldName: "hotelImages",
+      req,
+      dbFieldValue: hotel.hotelImages,
+    });
 
-    // HELPER FUNCTION TO PROCESS ANY IMAGE FIELD
-    const processImages = async (fieldName, dbFieldValue) => {
-      let existingUrls = [];
-
-      // Step 1: Extract URLs user wants to keep
-      if (Array.isArray(body[fieldName])) {
-        existingUrls = body[fieldName].filter((item) => typeof item === "string");
-      } else if (typeof body[fieldName] === "string") {
-        existingUrls.push(body[fieldName]);
-      }
-
-      // Step 2: Newly uploaded files
-      const newUploadedUrls = req.savedFiles?.[fieldName] || [];
-
-      // Step 3: Merge both
-      const finalUrls = [...existingUrls, ...newUploadedUrls];
-
-      // Step 4: Delete old unused images from disk
-      const existingDbImages = Array.isArray(dbFieldValue) ? dbFieldValue : [];
-
-      const imagesToDelete = existingDbImages.filter((oldUrl) => !existingUrls.includes(oldUrl));
-
-      for (const imgPath of imagesToDelete) {
-        const fullPath = path.join(baseUploadPath, imgPath.replace("assets/", ""));
-        try {
-          await fs.promises.access(fullPath);
-          await fs.promises.unlink(fullPath);
-          console.log(`Deleted old image: ${fullPath}`);
-        } catch (err) {
-          console.error(`Failed to delete image: ${fullPath}`, err.message);
-        }
-      }
-
-      return finalUrls;
-    };
-
-    // PROCESS hotelImages
-    const finalHotelImages = await processImages("hotelImages", hotel.hotelImages);
-
-    // PROCESS coverImages
-    const finalCoverImages = await processImages("coverImages", hotel.coverImages);
-
+    const finalCoverImages = await processImages({
+      fieldName: "coverImages",
+      req,
+      dbFieldValue: hotel.coverImages,
+    });
 
     // UPDATE HOTEL RECORD
     await hotel.update({
@@ -189,6 +103,11 @@ exports.updateHotel = async (req, res) => {
     });
 
   } catch (error) {
+     if (req.savedFiles && typeof req.savedFiles === "object") {
+      for (const field in req.savedFiles) {
+        await deleteUploadedImages(req.savedFiles[field]);
+      }
+    }
     console.log("error is:", error);
     res.status(500).json({ error: error.message });
   }
@@ -199,6 +118,8 @@ exports.deleteHotel = async (req, res) => {
     const hotel = await Hotel.findByPk(req.params.id);
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
 
+    await deleteUploadedImages(hotel.hotelImages);
+    await deleteUploadedImages(hotel.coverImages);
     await hotel.destroy();
     return res.status(200).json({ message: "Hotel deleted" });
 
@@ -256,7 +177,9 @@ exports.getHotel = async (req, res) => {
           as: 'user',
           attributes: ["mobile", "name", "email", "address"]
         },
-        { model: Rooms, as: "rooms"}
+        { model: Rooms, as: "rooms"},
+        { model: Spots, as: "spots"},
+        { model: NearbyPlaces, as: "nearbyPlaces"}
       ],
     });
 

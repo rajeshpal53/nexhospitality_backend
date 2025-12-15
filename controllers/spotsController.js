@@ -5,6 +5,7 @@ const { Op } = require('sequelize');
 const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
+const {processImages, deleteUploadedImages} = require("../utility/processImages");
 
 exports.createSpot = async (req, res) => {
   try {
@@ -25,6 +26,52 @@ exports.createSpot = async (req, res) => {
   } catch (error) {
     console.error("Spot Create Error:", error);
     res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+exports.updateSpots = async (req, res) => {
+  try {
+    const { body } = req;
+    const spots = await Spots.findByPk(req.params.id);
+    if (!spots) return res.status(404).json({ error: "spots not found" });
+
+    const finalImageUrls = await processImages({
+      fieldName: "spotsImages",
+      req,
+      dbFieldValue: spots.spotsImages,
+    });
+
+    // Step 5: Save final image array in DB
+    await spots.update({
+      ...body,
+      spotsImages: finalImageUrls
+    });
+
+    return res.status(200).json({ message: 'spots updated successfully', spots });
+
+  } catch (error) {
+    if (req.savedFiles && typeof req.savedFiles === "object") {
+      for (const field in req.savedFiles) {
+        await deleteUploadedImages(req.savedFiles[field]);
+      }
+    }
+    console.log("error is:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.deleteNearbyPlace = async (req, res) => {
+  try {
+    const spots = await Spots.findByPk(req.params.id);
+    if (!spots) return res.status(404).json({ error: "spots not found" });
+
+    await deleteUploadedImages(spots.spotsImages);
+    await spots.destroy();
+    return res.status(200).json({ message: "spots deleted" });
+
+  } catch (error) {
+    console.log("error is:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 

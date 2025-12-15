@@ -8,7 +8,7 @@ const moment = require('moment');
 // Create a new transaction
 exports.createTransaction = async (req, res) => {
   try {
-    const { hotelfk, userfk, bookingfk, amount, transactionDate, transactionStatus, paymentMode, remark } = req.body;
+    const { hotelfk, userfk, bookingfk, amount, transactionStatus, paymentMode, remark } = req.body;
 
     // Check booking
     const booking = await Booking.findByPk(bookingfk);
@@ -30,7 +30,6 @@ exports.createTransaction = async (req, res) => {
       userfk,
       bookingfk,
       amount,
-      transactionDate: transactionDate || new Date(),
       transactionStatus,
       paymentMode,
       remark

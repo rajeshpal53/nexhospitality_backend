@@ -18,6 +18,7 @@ const roomRoutes = require('./routes/roomRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const spotsRoutes = require('./routes/spotsRoutes');
 const nearbyPlacesRoutes = require('./routes/nearbyPlacesRoutes');
+const configRoutes = require('./routes/configRoutes');
 const path = require('path');
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -27,6 +28,7 @@ app.use('/napi/rooms', roomRoutes);
 app.use('/napi/bookings', bookingRoutes);
 app.use('/napi/spots', spotsRoutes);
 app.use('/napi/nearbyplaces', nearbyPlacesRoutes);
+app.use('/napi/config', configRoutes);
 // const sequelize = require('./config/db');
 // sequelize.sync().then(() => { console.log('Database synced')}).catch(err => console.log(err));
 

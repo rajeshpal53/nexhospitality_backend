@@ -32,11 +32,6 @@ const Transaction = sequelize.define("Transaction", {
     allowNull: false,
   },
 
-  transactionDate: {
-    type: DataTypes.DATE,
-    allowNull: true,
-  },
-
   transactionStatus: {
     type: DataTypes.ENUM("credit", "debit"),
     allowNull: false,
