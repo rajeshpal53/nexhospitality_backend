@@ -9,6 +9,8 @@ const { STATUS_FK_VALUE } = require('../utility/statusConstant');
 const Transaction = require('../models/transactions');
 const sequelize = require("../config/db");
 const moment = require('moment');
+require('dotenv').config();
+const razorpayInstance = require("../config/paymentService");
 
 exports.createBooking = async (req, res) => {
   const transaction = await sequelize.transaction();
@@ -176,6 +178,261 @@ exports.createBooking = async (req, res) => {
 
     return res.status(201).json({ message: "Booking created", booking, transactionEntry });
   } catch (error) {
+    await transaction.rollback();
+    console.error("Booking Create Error:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+exports.createBooking1 = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { hotelfk, userfk, amount, rooms, advance, remaining, startDateTime, endDateTime, remark, paymentMode, adults, children } = req.body;
+
+    const roomIds = rooms.map((item) => item.id);
+
+    const rooomsTotalPrice = rooms.reduce(
+      (acc, r) => acc + parseFloat(r.price || 0),
+      0
+    );
+
+    // const noOfAdults = rooms.reduce(
+    //   (acc, r) => acc + parseFloat(r.adults || 0),
+    //   0
+    // );
+
+    // const noOfChildren = rooms.reduce(
+    //   (acc, r) => acc + parseFloat(r.children || 0),
+    //   0
+    // );
+
+    // if (adults !== noOfAdults) {
+    //   await transaction.rollback();
+    //   return res.status(400).json({ error: "no. of adults does not match."});
+    // }
+
+    // if (children !== noOfChildren) {
+    //   await transaction.rollback();
+    //   return res.status(400).json({ error: "no. of children does not match."});
+    // }
+
+    const dbRooms = await Rooms.findAll({
+      where: { id: roomIds, hotelfk },
+      transaction,
+    });
+
+    if (dbRooms.length !== rooms.length) {
+      await transaction.rollback();
+      return res.status(400).json({ error: "Some rooms are invalid or do not belong to the hotel."});
+    }
+
+    // Validate room details and calculate the total on the backend
+    let calculatedTotal = 0;
+
+    for (let dbRoom of dbRooms) {
+      const clientRoom = rooms.find(r => r.id === dbRoom.id);
+
+      if (!clientRoom) {
+        await transaction.rollback();
+        return res.status(400).json({
+          error: `Room ID ${dbRoom.id} missing from request.`
+        });
+      }
+
+      if (
+        Number(clientRoom.price) !== Number(dbRoom.price) ||
+        clientRoom.type !== dbRoom.type || clientRoom.price <= 0
+      ) {
+        await transaction.rollback();
+        return res.status(400).json({
+          error: `Invalid details for room ID ${dbRoom.id}.`
+        });
+      }
+
+      calculatedTotal += Number(dbRoom.price);
+    }
+
+    // Validate the total amount
+    if (calculatedTotal !== rooomsTotalPrice) {
+      await transaction.rollback();
+      return res.status(400).json({ error: "Total amount mismatch. Please verify your booking."});
+    }
+
+    const parsedAdvance = parseFloat(advance);
+    const parsedAmount = parseFloat(amount);
+    const parsedRemaining = parseFloat(remaining);
+
+    if (isNaN(parsedAdvance) || isNaN(parsedAmount) || isNaN(parsedRemaining)) {
+      await transaction.rollback();
+      return res.status(400).json({ message: "Price, advance, and balance must be valid numbers" });
+    }
+
+    if ((parsedAmount - parsedAdvance) !== parsedRemaining) {
+      await transaction.rollback();
+      return res.status(400).json({ message: "remaining amount does not match" });
+    }
+
+    if (parsedAdvance > parsedAmount) {
+      await transaction.rollback();
+      return res.status(400).json({ message: "advance cannot be greater than price" });
+    }
+
+    let statusfk;
+    if(parsedRemaining == 0){
+      statusfk = 1;
+    }else if(parsedRemaining == parsedAmount){
+      statusfk = 2;
+    }else{
+      statusfk = 3;
+    }
+
+    const start = new Date(startDateTime);
+    const end = new Date(endDateTime);
+
+    if (!(start instanceof Date) || !(end instanceof Date) || isNaN(start.getTime()) || isNaN(end.getTime())) {
+      await transaction.rollback();
+      return res.status(400).json({ message: "Invalid slot date format" });
+    }
+  
+    if (start >= end) {
+      await transaction.rollback();
+      return res.status(400).json({ message: "Slot start must be before end" });
+    }
+
+    // Razorpay Order Creation (only if online payment)
+    let razorpayOrder = null;
+    if (paymentMode === 'Online' && amount > 0) {
+      razorpayOrder = await razorpayInstance.orders.create({
+        amount: amount * 100, // in paise
+        currency: "INR",
+        receipt: `receipt_order_${Date.now()}`,
+      });
+    }
+
+    await transaction.commit();
+
+    return res.status(200).json({
+      success: true,
+      razorpayOrder,
+      amount,
+      message: "Booking validated and payment initiated",
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Booking Create Error:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+exports.confirmBooking = async (req, res) => {
+  const transaction = await sequelize.transaction();
+      const { 
+      hotelfk,
+      userfk, 
+      amount, 
+      rooms, 
+      advance, 
+      remaining, 
+      startDateTime, 
+      endDateTime, 
+      remark, 
+      paymentMode, 
+      adults, 
+      children, 
+      razorpay_order_id, 
+      razorpay_payment_id, 
+      razorpay_signature, 
+    } = req.body;
+
+  try {
+
+    // verify signature
+    const secret = process.env.RAZORPAY_KEY_SECRET;
+    
+    const generated_signature = crypto
+      .createHmac('sha256', secret)
+      .update(razorpay_order_id + '|' + razorpay_payment_id)
+      .digest('hex');
+
+    if (generated_signature !== razorpay_signature) {
+      await transaction.rollback();
+      return res.status(400).json({ error: "Payment verification failed" });
+    }
+
+    let statusfk;
+    if(parsedRemaining == 0){
+      statusfk = 1;
+    }else if(parsedRemaining == parsedAmount){
+      statusfk = 2;
+    }else{
+      statusfk = 3;
+    }
+
+    const booking1 = await Booking.create({
+      hotelfk,
+      userfk,
+      amount,
+      advance,
+      startDateTime,
+      endDateTime,
+      remaining,
+      statusfk,
+      adults,
+      children : children || 0
+    },
+    { transaction });
+
+    await BookingRooms.bulkCreate(
+      rooms.map(r => ({
+        bookingfk: booking1.id,
+        roomfk: r.id
+      })),
+      { transaction }
+    );
+
+    let transactionEntry;
+    if ((STATUS_FK_VALUE[statusfk] !== 'unpaid') && (amount - remaining !== 0)){
+      // Insert Transaction (assuming payment is made)
+      transactionEntry = await Transaction.create(
+       {
+         userfk,
+         bookingfk: booking1.id,
+         amount: amount - remaining,
+         transactionStatus: "credit",
+         paymentMode,
+         remark,
+       },
+       { transaction }
+      );
+    }
+
+    await transaction.commit();
+
+    const booking = await Booking.findOne({
+      where: {
+        id: booking1.id
+      },
+      include: [
+        { model: Rooms, as: 'rooms'}
+      ]
+    })
+
+    return res.status(201).json({ message: "Booking created", booking, transactionEntry });
+
+  } catch (error) {
+    // Attempt to refund if payment was already made
+    if (razorpay_payment_id) {
+      try {
+        const refundAmount = Math.round((amount) * 100);
+        const refund = await razorpayInstance.payments.refund(razorpay_payment_id, {
+        amount: refundAmount || undefined, // Optional; full refund if omitted
+        });
+        console.log("Refund initiated due to order failure:", refund);
+      } catch (refundError) {
+        console.error("Refund failed:", refundError.message);
+      }
+    }
+
     await transaction.rollback();
     console.error("Booking Create Error:", error);
     res.status(500).json({ error: "Internal Server Error" });

@@ -13,7 +13,7 @@ const fs = require("fs");
  * @returns {Array} final merged image URLs
  */
 
-const baseUploadPath = process.env.UPLOAD_PATH || path.join(__dirname, '../public/assets');
+const baseUploadPath = process.env.UPLOAD_PATH || path.join(__dirname, '../../hospitality-frontend/assets');
 
 const processImages = async ({
   fieldName,
