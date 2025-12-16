@@ -11,11 +11,16 @@ const sequelize = require("../config/db");
 const moment = require('moment');
 require('dotenv').config();
 const razorpayInstance = require("../config/paymentService");
+const crypto = require('crypto');
 
 exports.createBooking = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const { hotelfk, userfk, amount, rooms, advance, remaining, startDateTime, endDateTime, remark, paymentMode, adults, children } = req.body;
+
+    if (!hotelfk || !startDateTime || !endDateTime || !userfk) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
 
     const roomIds = rooms.map((item) => item.id);
 
@@ -346,6 +351,10 @@ exports.confirmBooking = async (req, res) => {
 
   try {
 
+    if (!hotelfk || !startDateTime || !endDateTime || !userfk) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
     // verify signature
     const secret = process.env.RAZORPAY_KEY_SECRET;
     
@@ -358,6 +367,10 @@ exports.confirmBooking = async (req, res) => {
       await transaction.rollback();
       return res.status(400).json({ error: "Payment verification failed" });
     }
+
+    const parsedAdvance = parseFloat(advance);
+    const parsedAmount = parseFloat(amount);
+    const parsedRemaining = parseFloat(remaining);
 
     let statusfk;
     if(parsedRemaining == 0){
@@ -666,5 +679,219 @@ exports.getBookings = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Error fetching bookings", error });
+  }
+};
+
+exports.getHotelStats = async (req, res) => {
+  try {
+    const { dateRange, startDate, endDate, year, month, hotelfk, userfk, guestId } = req.query;
+
+    if (!hotelfk && !userfk) {
+      return res.status(400).json({ success: false, message: "Either hotelfk or userfk is required" });
+    }
+
+    let hotelIds = []; 
+
+    if (userfk) {
+      // Get all vendor IDs for the user
+      const hotels = await Hotel.findAll({ where: { userfk }, attributes: ['id'] });
+      hotelIds = hotels.map(h => h.id);
+
+      if (hotelIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          totalRevenue: 0,
+          noOfBookings: 0,
+          amountPaid: 0,
+          amountRemaining: 0,
+        });
+      }
+    } else if (hotelfk) {
+      hotelIds = [hotelfk];
+    }
+
+    // Base where clause
+    let whereClause = {
+      bookingStatus: {
+        [Op.in]: ['completed', 'inprogress']
+      },
+    };
+
+    let whereClause1 = {
+      bookingStatus: {
+        [Op.in]: ['completed', 'inprogress']
+      },
+    };
+
+    if(guestId){
+      whereClause.userfk = guestId,
+      whereClause1.userfk = guestId
+    }
+
+    let whereClause2 ={};
+
+     // Determine createdAt date condition
+    let createdAtCondition = null;
+    const today = moment().endOf('day');
+
+    if (startDate && endDate) {
+      // Custom range
+      const start = moment(startDate, "DD-MM-YYYY").startOf('day');
+      const end = moment(endDate, "DD-MM-YYYY").endOf('day');
+
+      if (!start.isValid() || !end.isValid()) {
+        return res.status(400).json({ success: false, message: "Invalid date format. Use DD-MM-YYYY." });
+      }
+
+      createdAtCondition = {
+        [Op.between]: [start.toDate(), end.toDate()]
+      };
+    } else if (year && month) {
+      const start = moment(`${year}-${month}-01`, "YYYY-MM-DD").startOf('month');
+      const end = start.clone().endOf('month');
+
+      if (!start.isValid()) {
+        return res.status(400).json({ success: false, message: "Invalid year or month." });
+      }
+
+      createdAtCondition = {
+        [Op.between]: [start.toDate(), end.toDate()]
+      };
+
+    // 3. Year only
+    } else if (year) {
+      const start = moment(`${year}-01-01`, "YYYY-MM-DD").startOf('year');
+      const end = start.clone().endOf('year');
+
+      createdAtCondition = {
+        [Op.between]: [start.toDate(), end.toDate()]
+      };
+
+    // 4. Predefined Ranges
+    } else if (dateRange) {
+      let fromDate;
+
+      switch (dateRange) {
+        case 'week':
+          fromDate = moment().startOf('week').toDate();
+          break;
+        case 'month':
+          fromDate = moment().startOf('month').toDate();
+          break;
+        case 'year':
+          fromDate = moment().startOf('year').toDate();
+          break;
+        default:
+          return res.status(400).json({ success: false, message: 'Invalid date range' });
+      }
+
+      createdAtCondition = {
+        [Op.between]: [fromDate, today.toDate()]
+      };
+    }
+
+    if (createdAtCondition) {
+      whereClause.createdAt = createdAtCondition;
+    }
+
+    const { count, rows: bookings } = await Booking.findAndCountAll({
+      where: {
+       ...whereClause
+      },
+      distinct: true,
+    });
+
+    console.log("bookings:-", bookings);
+  
+    const bookingIds = bookings.map(b => b.id);
+
+     // If no bookings, return zero stats
+     if (bookingIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        totalRevenue: 0,
+        noOfBookings: 0,
+        amountPaid: 0,
+        amountRemaining: 0,
+      });
+    }
+
+    const amountPaid = await Transaction.sum('amount',{
+      where: {  
+        bookingfk: bookingIds,
+      }
+    });
+
+    const amountPaidwithCash = await Transaction.sum('amount',{
+      where: {  
+        bookingfk: bookingIds,
+        paymentMode: "CASH"
+      }
+    });
+
+    const amountPaidWithoutCash = await Transaction.sum("amount", {
+      where: {
+        bookingfk: bookingIds,
+        paymentMode: {
+          [Op.not]: "CASH",
+        },
+      },
+    });
+
+    const amountRemaining = await Booking.sum('remaining',{
+      where: {
+        id: bookingIds
+      }
+    });
+
+    const totalRevenue = await Booking.sum('amount', {
+     where: {
+        id: bookingIds 
+      } 
+    });
+
+    let monthlyRevenue = [];
+
+    if (year && !month && !startDate && !endDate && !dateRange) {
+      for (let m = 0; m < 12; m++) {
+        const start = moment(`${year}-${m + 1}-01`, "YYYY-MM-DD").startOf('month');
+        const end = start.clone().endOf('month');
+      
+        const bookings = await Booking.findAll({
+          where: {
+            ...whereClause1,
+            createdAt: {
+              [Op.between]: [start.toDate(), end.toDate()]
+            }
+          },
+          attributes: ['amount']
+        });
+
+        const revenue = bookings.reduce(
+          (acc, b) => acc + parseFloat(b.amount || 0),
+          0
+        );
+      
+        monthlyRevenue.push({
+          month: start.format("MMM"),
+          revenue: revenue || 0
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      totalRevenue: totalRevenue || 0,
+      noOfBookings: count,
+      amountPaid: amountPaid || 0,
+      amountRemaining: amountRemaining || 0,
+      amountPaidwithCash : amountPaidwithCash || 0,
+      amountPaidWithoutCash : amountPaidWithoutCash || 0,
+      ...(monthlyRevenue.length > 0 && { monthlyRevenue }) // only include if present
+    });
+
+  } catch (error) {
+    console.error("Error fetching vendor stats:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };

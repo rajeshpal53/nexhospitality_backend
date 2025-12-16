@@ -25,8 +25,4 @@ const Config = sequelize.define('Config', {
   },
 });
 
-sequelize.sync()
-  .then(() => console.log('Service table has been synced'))
-  .catch(err => console.log('Error: ' + err));
-
 module.exports = Config;
